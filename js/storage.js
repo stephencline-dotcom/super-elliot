@@ -34,7 +34,7 @@ const lessonId = (v) => typeof v === 'string' && /^[a-z0-9-]{1,80}$/.test(v) ? v
 const lessonMeta = (v) => ({
   currentLessonId: lessonId(v.currentLessonId),
   originLessonId: lessonId(v.originLessonId),
-  lessonContext: ['core', 'transfer', 'connected-review', 'extra-new', 'extra-review'].includes(v.lessonContext) ? v.lessonContext : null,
+  lessonContext: ['core', 'transfer', 'connected-review', 'extra-new', 'extra-review', 'quick-new', 'quick-review'].includes(v.lessonContext) ? v.lessonContext : null,
 });
 
 // Returns { ok, errors, data }. `data` is a sanitized copy containing only known fields.
@@ -66,7 +66,7 @@ export function validateProgress(input) {
       endedAt: isStr(s.endedAt, 40) ? s.endedAt : null,
       plannedWords: Number.isInteger(s.plannedWords) ? s.plannedWords : 0,
       completedWords: Number.isInteger(s.completedWords) ? s.completedWords : 0,
-      results: cleanResults, lessonId: lessonId(s.lessonId), practiceMode: s.practiceMode === 'extra' ? 'extra' : 'lesson',
+      results: cleanResults, lessonId: lessonId(s.lessonId), practiceMode: ['extra','quick'].includes(s.practiceMode) ? s.practiceMode : 'lesson',
     });
   });
 

@@ -1,6 +1,7 @@
 import { h } from './dom.js';
 import { cardCollection, dugoutWelcome } from './baseball.js';
 import { scoreboard } from './components.js';
+import { quickQueue } from '../quick.js';
 import { totals } from '../stats.js';
 import { totalPoints } from '../scoring.js';
 
@@ -27,7 +28,9 @@ export function renderHome(ctx) {
     h('p', { class: 'run-guide' }, '1 practice run for each word completed, plus 1 for sentence practice. Each word and sentence earns its run once a day. Spelling without help is tracked separately.'),
     h('div', { class: 'menu' },
       h('button', { class: 'btn primary big', type: 'button', 'data-autofocus': true, onClick: () => ctx.go('lessons') }, 'Choose a Lesson'),
+      h('button', { class: 'btn big play-review', type: 'button', disabled:!quickQueue(ctx.progress,ctx.today).length, onClick: () => ctx.go('quick') }, 'Play & Review'),
       h('button', { class: 'btn big', type: 'button', onClick: () => ctx.go('parent') }, 'My Progress'),
       h('button', { class: 'btn big', type: 'button', onClick: () => ctx.go('settings') }, 'Settings')),
+    !quickQueue(ctx.progress,ctx.today).length ? h('p',{class:'note'},'Play & Review opens after you practice a lesson.') : null,
     cardCollection(ctx.progress));
 }

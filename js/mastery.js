@@ -4,7 +4,7 @@ import { CATALOG } from './data/catalog.js';
 export const MASTERY_DAYS = 2;
 export const independentAttempt = (a) => a.correct && a.stage === 'try' && a.attemptType === 'first'
   && !a.hintUsed && !a.modelUsed && !a.correctionShown && !a.instructionShown
-  && a.reviewKind !== 'same-session';
+  && !['same-session','same-day'].includes(a.reviewKind);
 
 export function lessonEvidence(lesson, progress) {
   const words = [...lesson.words, ...lesson.transfer];
@@ -19,7 +19,7 @@ export function lessonEvidence(lesson, progress) {
     .sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
   for (const a of attempts) {
     relevantAttempts++;
-    if (a.attemptType !== 'first' || a.reviewKind === 'same-session') continue;
+    if (a.attemptType !== 'first' || ['same-session','same-day'].includes(a.reviewKind)) continue;
     if (!a.correct) dates[a.word].clear();
     else if (independentAttempt(a)) dates[a.word].add(a.date);
     if (ready()) everMastered = true;

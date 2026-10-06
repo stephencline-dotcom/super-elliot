@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { emptyProgress, validateProgress } from '../js/storage.js';
 import { CATALOG } from '../js/data/catalog.js';
 import { DEFAULT_SETTINGS } from '../js/constants.js';
+import { renderQuick } from '../js/ui/quick.js';
+import { renderHome } from '../js/ui/home.js';
 import { renderPractice } from '../js/ui/practice.js';
 import { soundModel } from '../js/data/sounds.js';
 import { LESSONS } from '../js/data/lessons.js';
@@ -278,4 +280,42 @@ test('the final rule can be read on request and never narrates automatically',()
  const c=fixture();c.progress.sessions.push({id:'end',lessonId:'doubling-ed',results:[]});
  const root=renderResults(c,{sessionId:'end'});assert.equal(c.speech.length,0);
  click(root,'Read rule');assert.equal(c.speech.length,1);assert.ok(c.speech[0].includes('Double before -ed'));assert.ok(c.speech[0].includes('w, x, y'));
+});
+
+test('quick batting is silent, hides targets, finishes five words, and records familiar/new evidence separately',()=>{
+ const c=fixture(),regular=practice(c,'doubling-ing');finishWords(regular,c);click(regular,'Skip sentence check');
+ const home=renderHome(c);click(home,'Play & Review');assert.deepEqual(c.navigation.at(-1),['quick']);
+ const before=c.speech.length,root=renderQuick(c);assert.equal(c.speech.length,before);
+ const completed=[];
+ for(let i=0;i<5;i++) {
+  assert.ok(!root.textContent.includes('padding'));click(root,'Hear word');const word=c.speech.at(-1)[0];assert.ok(!root.textContent.includes(word));
+  completed.push(word);submit(root,word);assert.ok(root.querySelector('.quick-playfield').className.includes('hit'));
+  click(root,i===4?'See my round':'Next word');
+ }
+ assert.equal(c.speech.length,before+5);assert.equal(c.progress.sessions.at(-1).completedWords,5);
+ const attempts=c.progress.attempts.filter(a=>a.sessionId===c.progress.sessions.at(-1).id);
+ assert.equal(attempts.filter(a=>a.lessonContext==='quick-new').length,1);
+ assert.ok(attempts.filter(a=>a.lessonContext==='quick-review').every(a=>a.reviewKind==='same-day'));
+ assert.ok(root.textContent.includes('You practiced 5 words!'));assert.ok(validateProgress(c.progress).ok);
+ click(root,'Play another round');assert.deepEqual(c.navigation.at(-1),['quick']);
+ const next=renderQuick(c);let finalWord;
+ for(let i=0;i<5;i++){click(next,'Hear word');finalWord=c.speech.at(-1)[0];submit(next,finalWord);click(next,i===4?'See my round':'Next word');}
+ assert.equal(finalWord,'dipping');
+});
+
+test('quick misses get a correction and one supported hidden retry, with a bounded final miss',()=>{
+ const c=fixture(),regular=practice(c,'doubling-ing');finishWords(regular,c);click(regular,'Skip sentence check');
+ const root=renderQuick(c),before=c.speech.length;submit(root,'wrong');
+ assert.ok(root.textContent.includes('Let’s build it'));const target=c.progress.attempts.at(-1).word;
+ click(root,'Try with the answer hidden');assert.ok(!root.textContent.includes(target));submit(root,'stillwrong');
+ assert.equal(c.progress.sessions.at(-1).results[0].outcome,'moved-on');assert.equal(c.speech.length,before);
+ click(root,'Next word');click(root,'Show me a hint');click(root,'Try with the answer hidden');click(root,'Hear word');submit(root,c.speech.at(-1)[0]);
+ assert.equal(c.progress.sessions.at(-1).results.at(-1).outcome,'supported');assert.equal(c.progress.attempts.at(-1).modelUsed,true);
+ assert.ok(validateProgress(c.progress).ok);
+});
+
+test('quick play with no taught history gives a lesson link and creates no session or evidence',()=>{
+ const c=fixture(),root=renderQuick(c);assert.ok(root.textContent.includes('Practice a lesson first'));
+ assert.equal(c.progress.sessions.length,0);assert.equal(c.progress.attempts.length,0);assert.equal(c.speech.length,0);
+ click(root,'Choose a Lesson');assert.deepEqual(c.navigation.at(-1),['lessons']);
 });

@@ -3,6 +3,7 @@ import { today } from './dates.js';
 import { loadProgress, saveProgress, loadSettings, saveSettings } from './storage.js';
 import { h, announce, focusSoon, infoDialog } from './ui/dom.js';
 import { renderScene } from './ui/scene.js';
+import { renderQuick } from './ui/quick.js';
 import { renderHome } from './ui/home.js';
 import { renderPractice } from './ui/practice.js';
 import { renderResults } from './ui/results.js';
@@ -48,7 +49,7 @@ const ctx = {
     ctx.audio.stopSpeech();
     if (navigator.userActivation?.hasBeenActive) ctx.audio.unlock();
     const views = {
-      lessons: renderLessons, home: renderHome, practice: renderPractice, results: renderResults, parent: renderParent, settings: renderSettings,
+      quick: renderQuick, lessons: renderLessons, home: renderHome, practice: renderPractice, results: renderResults, parent: renderParent, settings: renderSettings,
     };
     document.body.dataset.screen = screen;
     main.replaceChildren(views[screen](ctx, params));

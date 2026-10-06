@@ -14,7 +14,7 @@ export function updateWordRecord(prev, { outcome, reviewKind, today }) {
   let difficulty = p.difficultyCount;
 
   if (outcome === 'independent') {
-    if (reviewKind !== 'same-session') idx = Math.min(idx + 1, INTERVAL_DAYS.length - 1);
+    if (!['same-session','same-day'].includes(reviewKind)) idx = Math.min(idx + 1, INTERVAL_DAYS.length - 1);
     if (reviewKind === 'later-session') needs = false;
   } else if (outcome === 'supported') {
     idx = Math.max(-1, idx - 1);

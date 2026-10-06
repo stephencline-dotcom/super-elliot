@@ -386,3 +386,17 @@ body[data-screen="practice"] .brand { padding: .1rem 0 .25rem; font-size: .72rem
 }
 
 .rule-spotlight .rule-read { background:#102449; color:#fff; border:2px solid #102449; padding:.3rem .6rem; min-height:40px; font-size:.85rem; }
+
+/* A short baseball review game; motion is cosmetic and never required to continue. */
+.quick-game { max-width:1000px; margin:0 auto; }
+.quick-game .card { padding:clamp(.7rem,2vw,1.3rem); }
+.quick-game h2 { margin:.25rem 0; }
+.quick-playfield { max-width:600px; margin:0 auto; }
+.quick-playfield svg { display:block; width:100%; max-height:170px; }
+.quick-playfield.hit .quick-ball { animation:quick-hit .9s ease-out forwards; }
+.quick-hint { border-left:4px solid var(--gold); padding:.4rem .7rem; background:#142b48; font-size:1rem; }
+.quick-game .btn.primary:not(:disabled) { min-height:48px; border:2px solid #fff; box-shadow:0 0 0 3px var(--gold); font-weight:800; }
+.play-review { border-color:var(--gold); background:#164f3b; }
+@keyframes quick-hit { from { transform:translate(0,0); } to { transform:translate(var(--hit-x),var(--hit-y)); } }
+html[data-motion='reduced'] .quick-playfield.hit .quick-ball { animation:none; transform:translate(var(--hit-x),var(--hit-y)); }
+@media(max-height:700px) { .quick-playfield svg { max-height:110px; } .quick-game .card { padding:.6rem .9rem; } }

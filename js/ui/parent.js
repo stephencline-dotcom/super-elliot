@@ -63,7 +63,7 @@ export function renderParent(ctx) {
     section('Evidence by word',
       h('p', { class: 'note' }, 'Guided practice = correct with a hint, model, or retry. Independent success = correct first try with no support. Later recall = independent first try in a later session. Same-session retries are counted separately from later review.'),
       practiced.length
-        ? table(['Word', 'Attempts', 'Attempts with hint', 'Guided', 'Independent', 'Later recall', 'Same-session recall', 'Next review', 'Instruction'],
+        ? table(['Word', 'Attempts', 'Attempts with hint', 'Guided', 'Independent', 'Later recall', 'Immediate recall', 'Next review', 'Instruction'],
           practiced.map((w) => {
             const c = stats[w.word];
             const rec = progress.words[w.word];
@@ -98,6 +98,9 @@ export function renderParent(ctx) {
           fresh.filter(a=>a.outcome==='supported').length,fresh.filter(a=>a.outcome==='moved-on').length,
           results.filter(a=>['extra-review','connected-review'].includes(a.lessonContext) && a.reviewKind!=='same-session').length];
       }), 'Additional application practice')),
+    section('Quick Batting Practice',
+      h('p',null,'Only taught patterns enter the game. Same-day play is immediate practice, not delayed recall.'),
+      table(['Date','Words completed','New applications','Familiar words'],progress.sessions.filter(s=>s.practiceMode==='quick').slice(-20).reverse().map(s=>[s.date,s.completedWords,s.results.filter(r=>r.lessonContext==='quick-new').length,s.results.filter(r=>r.lessonContext==='quick-review').length]),'Quick practice rounds')),
     section('Recent attempts',
       progress.attempts.length
         ? table(['Date', 'Word', 'Typed', 'Result', 'Stage', 'Hint', 'Model', 'Try', 'Review', 'Original lesson', 'Practiced in', 'Context'],

@@ -1,3 +1,4 @@
+import { totalPoints } from './scoring.js';
 import {
   DEFAULT_SETTINGS, INTERVAL_DAYS, ATTEMPT_TYPES, OUTCOMES, REVIEW_KINDS, STAGES, STORAGE_VERSION,
 } from './constants.js';
@@ -33,7 +34,7 @@ const lessonId = (v) => typeof v === 'string' && /^[a-z0-9-]{1,80}$/.test(v) ? v
 const lessonMeta = (v) => ({
   currentLessonId: lessonId(v.currentLessonId),
   originLessonId: lessonId(v.originLessonId),
-  lessonContext: ['core', 'transfer', 'connected-review'].includes(v.lessonContext) ? v.lessonContext : null,
+  lessonContext: ['core', 'transfer', 'connected-review', 'extra-new', 'extra-review'].includes(v.lessonContext) ? v.lessonContext : null,
 });
 
 // Returns { ok, errors, data }. `data` is a sanitized copy containing only known fields.
@@ -65,7 +66,7 @@ export function validateProgress(input) {
       endedAt: isStr(s.endedAt, 40) ? s.endedAt : null,
       plannedWords: Number.isInteger(s.plannedWords) ? s.plannedWords : 0,
       completedWords: Number.isInteger(s.completedWords) ? s.completedWords : 0,
-      results: cleanResults, lessonId: lessonId(s.lessonId),
+      results: cleanResults, lessonId: lessonId(s.lessonId), practiceMode: s.practiceMode === 'extra' ? 'extra' : 'lesson',
     });
   });
 
@@ -87,7 +88,7 @@ export function validateProgress(input) {
   } else for (const [i, a] of (input.activities ?? []).entries()) {
     const checks = isObj(a) ? a.checks ?? [] : [];
     const ok = isObj(a) && isStr(a.id, 80) && isDateString(a.date) && isStr(a.sessionId, 80)
-      && lessonId(a.lessonId) && ['build', 'sentence'].includes(a.kind) && WORD_RE.test(a.word)
+      && lessonId(a.lessonId) && ['build', 'sentence', 'sound-count', 'sound-map', 'sound-ending', 'sound-routine'].includes(a.kind) && WORD_RE.test(a.word)
       && isStr(a.prompt, 500) && isStr(a.typed, 500) && isBool(a.correct) && isBool(a.modelUsed)
       && ['first', 'retry', 'skipped'].includes(a.attemptType) && Array.isArray(checks) && checks.length <= 10
       && checks.every((c) => isObj(c) && WORD_RE.test(c.word) && isBool(c.correct));
@@ -159,7 +160,7 @@ export function summarize(progress) {
     attempts: progress.attempts.length,
     activities: (progress.activities ?? []).length,
     words: Object.keys(progress.words).length,
-    points: progress.points.ledger.reduce((s, e) => s + e.points, 0),
+    points: totalPoints(progress.points.ledger),
   };
 }
 

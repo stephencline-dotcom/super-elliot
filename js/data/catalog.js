@@ -1,7 +1,8 @@
 // Three connected lessons in the first full unit. Preserve stable IDs for existing history.
+import { EXTRA_PRACTICE } from './extra.js';
 export const CATALOG = [
   { id: 'doubling-ing', unit: 'Doubling and endings', number: 1, title: '1. Build short words with -ing',
-    summary: 'Five dugout activities, four coached words, and two related spelling checks without a model.',
+    summary: 'Learn the pattern, build four words with sounds, and try two related words without a model.',
     words: ['running', 'hopping', 'swimming', 'sitting'], transfer: ['flipping', 'slipping'],
     links: ['doubling-ed', 'doubling-contrast'], available: true,
     sentences: [
@@ -10,7 +11,7 @@ export const CATALOG = [
       { text: 'She is flipping the card over.', targets: ['flipping'] },
     ] },
   { id: 'doubling-ed', unit: 'Doubling and endings', number: 2, title: '2. Build short words with -ed',
-    summary: 'Five dugout activities compare -ed spellings; then practice four coached words and two related checks.',
+    summary: 'Learn -ed with examples, build with sounds, then spell and use the words.',
     words: ['planned', 'clapped', 'dropped', 'stopped'], transfer: ['rubbed', 'grabbed'],
     links: ['doubling-ing', 'doubling-contrast'], available: true,
     sentences: [
@@ -19,7 +20,7 @@ export const CATALOG = [
       { text: 'She grabbed her glove.', targets: ['grabbed'] },
     ] },
   { id: 'doubling-contrast', unit: 'Doubling and endings', number: 3, title: '3. Decide when to keep the base',
-    summary: 'Five dugout activities explain when to keep the base. Earlier words return in mixed review.',
+    summary: 'Learn when to keep the base, build with sounds, and apply the pattern. Earlier words return in review.',
     words: ['helping', 'cooled', 'looking', 'called'], transfer: ['jumped', 'worked'],
     links: ['doubling-ing', 'doubling-ed'], available: true,
     sentences: [
@@ -34,4 +35,4 @@ export const CATALOG = [
   { id: 'long-word-structure', title: 'Build longer words', words: ['communication', 'significant', 'organization', 'approximately', 'preparation', 'environment', 'government', 'available', 'experience', 'opportunity'], transfer: [], links: [], available: false },
   { id: 'individual-features', title: 'Individual spelling features', words: ['beautiful', 'explode', 'storm', 'discover', 'tomorrow', 'necessary', 'knowledge'], transfer: [], links: [], available: false },
 ];
-export const courseForWord = (word) => CATALOG.find((l) => [...l.words, ...l.transfer].includes(word)) ?? null;
+export const courseForWord = (word) => CATALOG.find((l) => [...l.words, ...l.transfer, ...(EXTRA_PRACTICE[l.id]?.entries.map(e=>e.word) ?? [])].includes(word)) ?? null;

@@ -1,6 +1,7 @@
 // Word bank. `sentence` uses {word} as the slot; the visible sentence shows a blank, speech says the word.
 // `accepted` lists extra spellings that count as correct. `lessonId` links to data/lessons.js.
 // Words without a lessonId are "instruction pending": no explanation has been written for them yet.
+import { EXTRA_WORDS } from './extra.js';
 export const WORDS = [
   { word: 'running', sentence: 'The batter is {word} toward first base.', accepted: [], lessonId: 'running' },
   { word: 'planned', sentence: 'The coach {word} the practice schedule.', accepted: [], lessonId: 'planned' },
@@ -50,6 +51,7 @@ export const WORDS = [
   {"word": "called", "sentence": "The coach {word} the next batter.", "accepted": [], "lessonId": "called"},
   {"word": "jumped", "sentence": "The fans {word} when the team scored.", "accepted": [], "lessonId": "jumped"},
   {"word": "worked", "sentence": "The team {word} together at practice.", "accepted": [], "lessonId": "worked"},
+  ...EXTRA_WORDS,
 ];
 
 export const BLANK = '_____';

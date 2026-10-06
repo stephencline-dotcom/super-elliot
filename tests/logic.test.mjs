@@ -35,7 +35,7 @@ test('word data: every observation target is in the bank; lessons are linked', (
     assert.ok(o.inferredTarget && o.needsParentConfirmation);
   }
   for (const id of ['running', 'planned', 'studies', 'hopping', 'clapped', 'carries']) assert.ok(lessonFor(wordEntry(id)));
-  assert.equal(Object.keys(LESSONS).length, 20);
+  assert.equal(Object.keys(LESSONS).length, WORDS.filter(w=>w.lessonId).length);
   assert.ok(isCorrect(wordEntry('organization'), ' Organisation '));
 });
 
@@ -124,12 +124,14 @@ test('points cannot be farmed', () => {
   const ledger = [];
   const args = { date: '2026-10-05', sessionId: 's1', word: 'storm', outcome: 'independent', reviewKind: 'first-exposure' };
   ledger.push(...awardPoints(ledger, args));
-  assert.equal(totalPoints(ledger), 10);
+  assert.equal(totalPoints(ledger), 1);
   assert.deepEqual(awardPoints(ledger, args), []);
   assert.deepEqual(awardPoints(ledger, { ...args, sessionId: 's2' }), []);
   const later = awardPoints(ledger, { ...args, date: '2026-10-09', reviewKind: 'later-session' });
-  assert.equal(later.reduce((s, e) => s + e.points, 0), 15);
-  assert.ok(awardPoints([], { ...args, outcome: 'supported' })[0].points < 10);
+  assert.equal(later.reduce((s, e) => s + e.points, 0), 1);
+  assert.equal(awardPoints([], { ...args, outcome: 'supported' })[0].points, 1);
+  assert.deepEqual(awardPoints(ledger, { ...args, outcome: 'supported' }), []);
+  assert.deepEqual(awardPoints([], { ...args, reviewKind: 'same-session' }), []);
 });
 
 test('session queue: starts empty, due words first, supported words requeue once', () => {

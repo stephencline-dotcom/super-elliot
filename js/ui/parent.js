@@ -47,7 +47,7 @@ export function renderParent(ctx) {
     scoreboard({
       label: 'Totals',
       items: [
-        { label: 'POINTS', value: totalPoints(progress.points.ledger) },
+        { label: 'RUNS', value: totalPoints(progress.points.ledger) },
         { label: 'SESSIONS', value: progress.sessions.filter((s) => s.results.length).length },
         { label: 'ATTEMPTS', value: t.attempts },
         { label: 'HINTS USED', value: t.hintAttempts },
@@ -83,12 +83,21 @@ export function renderParent(ctx) {
       (progress.activities ?? []).length ? table(['Date', 'Lesson', 'Activity', 'Prompt', 'Response', 'Result', 'Support', 'Attempt'],
         progress.activities.slice(-30).reverse().map((a) => [a.date, a.lessonId, a.kind, a.prompt, a.typed,
           a.attemptType === 'skipped' ? 'Skipped' : a.correct ? 'Correct' : 'Needs practice', a.modelUsed ? 'Model used' : 'No model', a.attemptType]),
-        'Building decisions and sentence attempts') : h('p', null, 'No building or sentence activities yet.')),
+        'Sound routines, building decisions and sentence attempts') : h('p', null, 'No sound, building or sentence activities yet.')),
     section('Starting observations (parent-provided, before the app)',
       h('p', { class: 'note' }, 'These are historical notes from a parent. They are not app results. Entries marked "inferred" guess the intended word and need parent confirmation.'),
       table(['Intended word', 'Spelled as', 'Note'],
         OBSERVATIONS.map((o) => [o.target, o.observed, o.inferredTarget ? 'Inferred intended word: parent to confirm' : 'Parent-provided']),
         'Parent-provided historical observations')),
+    section('Extra practice',
+      h('p',{class:'note'},'Additional words show how she applies a taught pattern. Their results stay separate from required lesson targets; support and sentence practice do not establish mastery.'),
+      table(['Lesson','New words without help','New words with help','New words still practicing','Familiar checks'], CATALOG.filter(l=>l.available).map(l=>{
+        const results=progress.sessions.filter(s=>s.practiceMode==='extra' && s.lessonId===l.id).flatMap(s=>s.results);
+        const fresh=results.filter(a=>a.lessonContext==='extra-new' && a.reviewKind!=='same-session');
+        return [l.title,fresh.filter(a=>a.outcome==='independent').length,
+          fresh.filter(a=>a.outcome==='supported').length,fresh.filter(a=>a.outcome==='moved-on').length,
+          results.filter(a=>['extra-review','connected-review'].includes(a.lessonContext) && a.reviewKind!=='same-session').length];
+      }), 'Additional application practice')),
     section('Recent attempts',
       progress.attempts.length
         ? table(['Date', 'Word', 'Typed', 'Result', 'Stage', 'Hint', 'Model', 'Try', 'Review', 'Original lesson', 'Practiced in', 'Context'],
@@ -117,8 +126,8 @@ function dataSection(ctx) {
       const ok = await confirmDialog({
         title: 'Replace progress with this file?',
         message: h('div', null,
-          h('p', null, `This browser now has ${cur.attempts} spelling attempts, ${cur.activities} activities, ${cur.sessions} sessions, ${cur.points} points.`),
-          h('p', null, `The file has ${inc.attempts} spelling attempts, ${inc.activities} activities, ${inc.sessions} sessions, ${inc.points} points.`),
+          h('p', null, `This browser now has ${cur.attempts} spelling attempts, ${cur.activities} activities, ${cur.sessions} sessions, ${cur.points} practice runs.`),
+          h('p', null, `The file has ${inc.attempts} spelling attempts, ${inc.activities} activities, ${inc.sessions} sessions, ${inc.points} practice runs.`),
           h('p', null, 'Importing replaces the current progress. A single backup of the current progress is kept in this browser. Export first if unsure.')),
         confirmLabel: 'Replace progress',
       });
@@ -145,7 +154,7 @@ function dataSection(ctx) {
         onClick: async () => {
           const ok = await confirmDialog({
             title: 'Reset all progress?',
-            message: 'This permanently deletes all attempts, points, and review schedules from this browser. Export a backup first if you may want them. Settings are kept.',
+            message: 'This permanently deletes all attempts, practice rewards, and review schedules from this browser. Export a backup first if you may want them. Settings are kept.',
             confirmLabel: 'Yes, reset progress',
           });
           if (ok) { ctx.replaceProgress(resetProgress(ctx.storage)); ctx.go('parent'); }

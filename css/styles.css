@@ -325,3 +325,64 @@ body[data-screen="practice"] .brand { padding: .1rem 0 .25rem; font-size: .72rem
 
 .celebration-play { display:flex; align-items:center; gap:.6rem; padding:.35rem .6rem; margin:.5rem 0; border-radius:8px; background:#183528; color:#f8e8b0; font-size:.85rem; }
 .celebration-ball { display:inline-block; flex:none; width:24px; height:24px; border:3px solid #cd4250; background:#fff; border-radius:50%; }
+
+/* Sound spelling uses one sound per box; several letters can share a box. */
+.practice .sound-start { margin:.2rem 0; border-color:var(--gold); background:#164f47; }
+.sound-action, .sound-map-form { padding:.55rem .8rem; background:#142b48; border:2px solid var(--gold); border-radius:12px; margin:.5rem 0; }
+.sound-count { font-weight:700; font-size:1.2rem; }
+.sound-boxes { display:flex; gap:.55rem; flex-wrap:wrap; margin:.6rem 0; }
+.sound-box { display:grid; gap:.2rem; justify-items:center; font-size:.8rem; }
+.sound-input { width:4rem; height:3rem; text-align:center; background:#fff; color:var(--ink); border:3px solid #7196c9; border-radius:8px; font-size:1.4rem; }
+.sound-input:focus { outline:3px solid var(--gold); outline-offset:2px; }
+.sound-input:disabled { opacity:1; background:#dceee2; }
+.sound-model { color:var(--gold); font-weight:700; }
+.sound-feedback { padding:.4rem .6rem; border-left:4px solid var(--gold); background:#183528; }
+.sound-model-tile { display:grid; place-items:center; min-width:3rem; padding:.25rem .5rem; border:2px solid var(--gold); border-radius:8px; font-size:1.35rem; background:#142b48; }
+@media (max-height:740px) and (min-width:700px) { .practice .sound-routine { padding:.6rem .9rem; } .sound-action, .sound-map-form { padding:.4rem .6rem; margin:.35rem 0; } .sound-boxes { margin:.4rem 0; } }
+
+.sound-cue { max-width:7rem; text-align:center; font-size:.7rem; line-height:1.35; }
+
+/* One visible lesson path, with the current stage marked in words and color. */
+.lesson-flow { width:100%; padding:.25rem .4rem; border:1px solid #839bb5; border-radius:12px; background:#12243d; }
+.lesson-flow ol { display:flex; justify-content:space-between; gap:.3rem; list-style:none; padding:0; margin:0; }
+.lesson-flow li { display:flex; align-items:center; justify-content:center; gap:.3rem; padding:.2rem .4rem; border-radius:7px; font-size:.8rem; flex:1; }
+.lesson-flow li.current { color:var(--ink); background:var(--gold); font-weight:700; }
+.flow-number { display:inline-grid; place-items:center; width:1.2rem; height:1.2rem; border:1px solid currentColor; border-radius:50%; font-size:.7rem; }
+.next-practice { border-left:4px solid var(--gold); padding:.5rem .8rem; background:#142b48; border-radius:8px; margin:.7rem 0; }
+.next-practice h2 { margin:.2rem 0; }
+@media(max-width:500px) { .flow-number { display:none; } .lesson-flow li { font-size:.7rem; padding:.25rem .15rem; } }
+
+.run-guide { font-size:.85rem; line-height:1.45; color:#e3edf8; padding:.45rem .7rem; border-left:3px solid var(--gold); background:#142b48; border-radius:6px; }
+
+/* Spotlight the learning goal and give each step a clear next action. */
+.rule-spotlight { background:#fff3c4; color:#102449; border:3px solid #ffd75e; border-left:8px solid #e81828; border-radius:14px; padding:.7rem 1rem; margin:.5rem 0; }
+.rule-spotlight .rule-label { color:#9c1322; font-size:.75rem; font-weight:800; letter-spacing:.08em; margin:0 0 .2rem; }
+.rule-spotlight h2 { color:#102449; font-size:clamp(1.3rem,3vw,1.8rem); margin:0 0 .25rem; }
+.rule-idea { font-size:1.05rem; font-weight:700; line-height:1.4; margin:.3rem 0; }
+.rule-checks { display:flex; flex-wrap:wrap; gap:.4rem; margin:.4rem 0; }
+.rule-checks span { border:1px solid #7f6730; border-radius:7px; background:#fff; padding:.2rem .45rem; font-size:.85rem; font-weight:700; }
+.rule-example { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem; margin:.4rem 0; }
+.rule-example span { font-size:clamp(1rem,2.3vw,1.4rem); font-weight:800; }
+.rule-example span:last-child { color:#9c1322; }
+.rule-details { font-size:.8rem; line-height:1.4; }
+.rule-details p { margin:.4rem 0 0; }
+.action-cue { display:flex; align-items:center; gap:.5rem; margin:.5rem 0; padding:.4rem .7rem; border-radius:8px; border-left:4px solid #ffd75e; background:#173350; color:#fff3c4; font-size:1rem; line-height:1.35; }
+.action-cue > span { color:#ffd75e; font-size:1.35rem; font-weight:800; }
+.practice .btn.primary:not(:disabled), .results .btn.primary:not(:disabled) { min-height:48px; border:2px solid #fff; box-shadow:0 0 0 3px #ffd75e; font-weight:800; }
+.practice .btn.primary:disabled { box-shadow:none; border-color:#718197; opacity:.45; }
+.practice details { font-size:.85rem; margin:.35rem 0; }
+.practice details summary, .results details summary { cursor:pointer; padding:.3rem 0; }
+.practice .build-decision.answered .decision-options { display:none; }
+.results .rule-recap { margin:.6rem 0; }
+.results > .lead { font-size:1rem; }
+.results .next-practice { padding:.35rem .7rem; margin:.4rem 0; }
+.results .next-practice h2 { font-size:1rem; }
+.results .next-practice p { margin:.2rem 0; }
+@media (max-height:740px) and (min-width:700px) {
+  .rule-spotlight { padding:.45rem .8rem; }
+  .rule-spotlight h2 { font-size:1.3rem; }
+  .rule-idea { font-size:.95rem; margin:.2rem 0; }
+  .action-cue { margin:.35rem 0; font-size:.9rem; padding:.3rem .6rem; }
+}
+
+.rule-spotlight .rule-read { background:#102449; color:#fff; border:2px solid #102449; padding:.3rem .6rem; min-height:40px; font-size:.85rem; }

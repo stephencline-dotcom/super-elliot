@@ -1,3 +1,4 @@
+import { rewardEntries } from './scoring.js';
 // Evidence summaries. Nothing here says a word is "mastered"; it only counts what happened.
 const unsupported = (a) => a.correct && a.attemptType === 'first' && !a.hintUsed && !a.modelUsed && !a.instructionShown && !a.correctionShown && a.reviewKind !== 'same-session';
 
@@ -33,7 +34,7 @@ export function sessionSummary(progress, sessionId) {
   const attempts = progress.attempts.filter((a) => a.sessionId === sessionId);
   const counts = emptyCounts();
   attempts.forEach((a) => countAttempt(counts, a));
-  const ledger = progress.points.ledger.filter((e) => e.sessionId === sessionId);
+  const ledger = rewardEntries(progress.points.ledger).filter((e) => e.sessionId === sessionId);
   const session = progress.sessions.find((s) => s.id === sessionId) ?? null;
   return { session, attempts, counts, ledger, points: ledger.reduce((s, e) => s + e.points, 0) };
 }

@@ -1,4 +1,5 @@
 import { h } from './dom.js';
+import { EXTRA_PRACTICE } from '../data/extra.js';
 import { CATALOG } from '../data/catalog.js';
 import { lessonEvidence, recommendedLesson, MASTERY_DAYS } from '../mastery.js';
 
@@ -18,11 +19,13 @@ export function renderLessons(ctx) {
           h('h2', null, l.title),
           h('p', null, l.summary ?? 'Coaching and practice are being prepared.'),
           h('p', { class: 'note' }, `Words: ${[...l.words, ...l.transfer].join(', ')}`),
+          EXTRA_PRACTICE[l.id] ? h('p',{class:'note'},`Extra practice pool: ${EXTRA_PRACTICE[l.id].entries.length} additional words and ${EXTRA_PRACTICE[l.id].sentences.length} sentences, mixed with familiar review.`) : null,
           l.available ? h('p', { class: 'note' }, `${e.readyWords}/${l.words.length} required words ready · Related check: ${e.transferReady ? 'passed' : 'still practicing'}`) : null),
-        l.available ? h('button', {
+        l.available ? h('div', {class:'row'}, h('button', {
           class: `btn${next ? ' primary' : ''}`, type: 'button', 'data-autofocus': next,
           onClick: () => ctx.go('practice', { lessonId: l.id }),
-        }, next ? 'Continue lesson' : e.mastered ? 'Review lesson' : 'Practice lesson')
+        }, next ? 'Continue lesson' : e.mastered ? 'Review lesson' : 'Practice lesson'),
+          EXTRA_PRACTICE[l.id] && ctx.progress.attempts.some(a=>a.currentLessonId===l.id || a.originLessonId===l.id) ? h('button',{class:'btn',type:'button',onClick:()=>ctx.go('practice',{lessonId:l.id,mode:'extra'})},'Extra practice') : null)
           : h('span', { class: 'note' }, 'Coming soon'));
     })),
     h('p', { class: 'note' }, 'More lessons will be added. Mastered words return in connected lessons with due reviews prioritized. New difficulties flag a refresher.'),

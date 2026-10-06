@@ -9,9 +9,11 @@
 //                    byAttempt: optional exact-misspelling messages, keyed by lowercase typed text.
 //   scope            Reminder that limits the rule so it is not over-generalized.
 //   status           'starter' = written for the first version and should be reviewed by an adult.
+import { EXTRA_LESSONS } from './extra.js';
 const p = (t, kind = 'base') => ({ t, kind });
 
 export const LESSONS = {
+  ...EXTRA_LESSONS,
   running: {
     word: 'running',
     role: 'demo',

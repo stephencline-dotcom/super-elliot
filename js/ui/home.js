@@ -19,11 +19,12 @@ export function renderHome(ctx) {
     scoreboard({
       label: 'Season totals',
       items: [
-        { label: 'POINTS', value: points },
+        { label: 'RUNS', value: points },
         { label: 'INDEPENDENT', value: t.independentSuccess },
         { label: 'LATER RECALL', value: t.laterRecall },
       ],
     }),
+    h('p', { class: 'run-guide' }, '1 practice run for each word completed, plus 1 for sentence practice. Each word and sentence earns its run once a day. Spelling without help is tracked separately.'),
     h('div', { class: 'menu' },
       h('button', { class: 'btn primary big', type: 'button', 'data-autofocus': true, onClick: () => ctx.go('lessons') }, 'Choose a Lesson'),
       h('button', { class: 'btn big', type: 'button', onClick: () => ctx.go('parent') }, 'My Progress'),

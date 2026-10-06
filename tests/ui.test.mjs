@@ -5,6 +5,9 @@ import { emptyProgress, validateProgress } from '../js/storage.js';
 import { CATALOG } from '../js/data/catalog.js';
 import { DEFAULT_SETTINGS } from '../js/constants.js';
 import { renderPractice } from '../js/ui/practice.js';
+import { soundModel } from '../js/data/sounds.js';
+import { LESSONS } from '../js/data/lessons.js';
+import { renderResults } from '../js/ui/results.js';
 import { renderLessons } from '../js/ui/lessons.js';
 class Element {
   constructor(tag = '') { this.tagName=tag;this.attrs={};this.children=[];this.events={};this.value=''; }
@@ -37,156 +40,242 @@ function button(root,text) {
 }
 function click(root,text) {button(root,text).events.click();}
 function submit(root,value) {root.querySelector('input').value=value;root.querySelector('form').events.submit({preventDefault(){}});}
-function practice(c, lessonId) { const root=renderPractice(c,{lessonId}); if(root.querySelector('.warmup')) click(root,'Skip warm-up'); return root; }
-test('catalog renders active and coming lessons, and selection routes to the chosen lesson',()=>{
-  const c=fixture(),root=renderLessons(c);
-  assert.ok(root.textContent.includes('Coming soon'));
-  assert.equal(root.all.filter(e=>e.tagName==='article').length,CATALOG.length);
-  click(root,'Continue lesson');assert.deepEqual(c.navigation[0],['practice',{lessonId:'doubling-ing'}]);
-});
-test('lesson flow is silent until a reading button is clicked; build choices and coaching stay supported',()=>{
-  const c=fixture(),root=practice(c,'doubling-ing');
-  assert.equal(c.speech.length,0);assert.ok(root.querySelector('.coach'));
-  click(root,'Read Aloud');assert.equal(c.speech.length,1);
-  click(root,'Ready for batting practice');assert.ok(root.querySelector('.coach'),'decision is required');
-  click(root,'Keep the base unchanged');assert.equal(c.progress.activities[0].correct,false);
-  click(root,'Double the final consonant');assert.equal(c.progress.activities[1].correct,true);
-  click(root,'Ready for batting practice');assert.equal(c.speech.length,1);
-  assert.ok(!root.textContent.includes('running'));
-  assert.ok(root.all.every(e=>!Object.values(e.attrs).some(v=>v.includes('running'))));
-  click(root,'Hear Word and Sentence');assert.equal(c.speech.length,2);
-  submit(root,'running');assert.equal(c.progress.attempts[0].modelUsed,true);
-  assert.equal(c.progress.sessions[0].results[0].outcome,'supported');
-  click(root,'Next batter');assert.equal(c.speech.length,2);
-  click(root,'Finish for today');assert.equal(c.navigation[0][0],'results');
-});
-test('miss flows through hint, guided building, hidden retry and no automatic speech',()=>{
-  const c=fixture(),root=practice(c,'doubling-ed');
-  click(root,'Double the final consonant');click(root,'Ready for batting practice');
-  submit(root,'pland');click(root,'Next Swing');
-  submit(root,'pland');click(root,'Next Swing');assert.ok(root.querySelector('.phase-guided'));
-  submit(root,'planned');click(root,'Next Swing');assert.ok(!root.textContent.includes('planned'));
-  submit(root,'planned');assert.equal(c.speech.length,0);
-  assert.equal(c.progress.sessions[0].results[0].outcome,'supported');
-});
-test('full expanded session reaches a silent sentence check; sentence evidence stays separate',()=>{
-  const c=fixture(),root=practice(c,'doubling-ing');
-  let words=0;
-  while(!root.querySelector('.sentence-check')) {
-    const before=c.speech.length;
-    if(root.querySelector('.coach')) {
-      click(root,'Double the final consonant');click(root,'Ready for batting practice');
-    }
-    assert.equal(c.speech.length,before,'no automatic speech on a screen transition');
-    click(root,'Hear Word and Sentence');
-    const word=c.speech.at(-1)[0];
-    assert.ok(!root.textContent.includes(word));submit(root,word);
-    const next=root.all.find(e=>e.tagName==='button'&&['Next batter','Try a game situation'].includes(e.textContent));
-    assert.ok(next);next.events.click();assert.equal(c.speech.length,before+1);
-    assert.ok(++words<20);
-  }
-  assert.ok(c.progress.attempts.some(a=>a.lessonContext==='transfer'&&!a.modelUsed));
-  const before=c.speech.length;assert.ok(!root.textContent.includes('She is running to first base.'));
-  click(root,'Hear Sentence');assert.equal(c.speech.length,before+1);
-  submit(root,c.speech.at(-1));
-  const a=c.progress.activities.at(-1);assert.equal(a.kind,'sentence');assert.equal(a.correct,true);
-  assert.equal(a.checks[0].originLessonId,'doubling-ing');
-  assert.equal(c.progress.points.ledger.filter(e=>e.kind==='sentence-practice').length,1);
-  click(root,'See results');assert.equal(c.navigation[0][0],'results');
-});
-test('contrast coaching records a keep decision and targets the reason for no doubling',()=>{
-  const c=fixture(),root=practice(c,'doubling-contrast');
-  click(root,'Double the final consonant');assert.equal(c.progress.activities[0].correct,false);
-  click(root,'Keep the base unchanged');assert.equal(c.progress.activities[1].correct,true);
-  click(root,'Ready for batting practice');submit(root,'helpping');
-  assert.ok(root.textContent.includes('Keep the base help as it is'));
-  assert.equal(c.speech.length,0);
+function intro(root) { click(root,'See examples');click(root,'Next example');click(root,'Build with the coach'); }
+function practice(c,lessonId) {const root=renderPractice(c,{lessonId});if(root.querySelector('.lesson-intro')) intro(root);return root;}
+function fillMap(root,values) {root.all.filter(e=>e.tagName==='input').forEach((input,i)=>input.value=values[i]);root.querySelector('form').events.submit({preventDefault(){}});}
+function build(root,c) {
+ click(root,'Hear base word');const base=c.speech.at(-1);
+ const model=soundModel(Object.values(LESSONS).find(l=>l.build?.base===base));
+ for(let i=0;i<model.groups.length;i++) click(root,'Tap one sound');
+ click(root,'Check sound count');click(root,'Map the sounds');fillMap(root,model.groups);
+ click(root,'Build the ending');click(root,model.operation==='double'?'Double the final consonant':'Keep the base unchanged');click(root,'Spell with the model hidden');
+}
+function finishWords(root,c) {
+ let guard=0;
+ while(!root.querySelector('.sentence-check')) {
+  if(root.querySelector('.sound-routine')) build(root,c);
+  if(root.querySelector('.coach')) {click(root,'Keep the base unchanged');click(root,'Try spelling');}
+  const before=c.speech.length;click(root,'Hear Word and Sentence');const word=c.speech.at(-1)[0];
+  assert.ok(!root.textContent.includes(word));submit(root,word);
+  const next=root.all.find(e=>e.tagName==='button'&&['Next word','Use it in a sentence'].includes(e.textContent));assert.ok(next);next.events.click();
+  assert.equal(c.speech.length,before+1,'transitions do not narrate');assert.ok(++guard<20);
+ }
+}
+
+test('catalog renders active/coming lessons and opens the selected lesson',()=>{
+ const c=fixture(),root=renderLessons(c);assert.ok(root.textContent.includes('Coming soon'));
+ assert.equal(root.all.filter(e=>e.tagName==='article').length,CATALOG.length);click(root,'Continue lesson');assert.deepEqual(c.navigation[0],['practice',{lessonId:'doubling-ing'}]);
 });
 
-test('wrong and correct choices update only the action panel; the coaching builder is not replayed',()=>{
-  const c=fixture(),root=practice(c,'doubling-ing');
-  const builder=root.querySelector('.builder'),coach=root.querySelector('.coach');
-  click(root,'Keep the base unchanged');
-  assert.equal(root.querySelector('.builder'),builder);
-  assert.equal(root.querySelector('.coach'),coach);
-  assert.ok(root.textContent.includes('TRY AGAIN — PICK ONE'));
-  assert.ok(root.querySelector('.build-decision').className.includes('retry-choice'));
-  assert.ok(root.querySelector('.practice-ready').disabled);
-  assert.ok(root.textContent.includes('Keeping the base unchanged would miss the extra n'));
-  click(root,'Double the final consonant');
-  assert.equal(root.querySelector('.builder'),builder);
-  assert.ok(root.textContent.includes('CORRECT — READY TO PRACTICE'));
-  assert.equal(root.querySelector('.practice-ready').disabled,false);
-  assert.equal(root.querySelector('.practice-ready').getAttribute('disabled'),null);
-  click(root,'Ready for batting practice');
-  assert.ok(root.querySelector('.batting'));assert.equal(c.speech.length,0);
+test('new lesson flows from pattern and two examples into sounds without automatic speech',()=>{
+ for(const lessonId of ['doubling-ing','doubling-ed','doubling-contrast']) {
+  const c=fixture(),root=renderPractice(c,{lessonId});assert.ok(root.querySelector('.lesson-intro'));
+  assert.ok(root.querySelector('.lesson-flow').textContent.includes('Learn'));assert.equal(c.speech.length,0);
+  click(root,'See examples');assert.ok(root.textContent.includes('Worked example 1 of 2'));
+  click(root,'Next example');assert.ok(root.textContent.includes('Worked example 2 of 2'));
+  click(root,'Build with the coach');assert.ok(root.querySelector('.sound-routine'));assert.equal(c.speech.length,0);
+  assert.equal(c.progress.attempts.length,0);assert.ok(!root.textContent.includes('null'));
+ }
+});
+
+test('sound flow updates Build and Try stages and hides the model before spelling',()=>{
+ const c=fixture(),root=practice(c,'doubling-ing');
+ const stage=()=>root.querySelector('.lesson-flow').all.find(e=>e.attrs['aria-current']==='step').textContent;
+ assert.ok(stage().includes('Build'));click(root,'Hear base word');assert.equal(c.speech.at(-1),'run');
+ click(root,'Tap one sound');click(root,'Check sound count');assert.equal(c.progress.activities.at(-1).correct,false);
+ click(root,'Reset taps');for(let i=0;i<3;i++) click(root,'Tap one sound');click(root,'Check sound count');click(root,'Map the sounds');
+ fillMap(root,['r','o','n']);assert.ok(root.textContent.includes('box 2'));assert.ok(root.textContent.includes('Model: u'));
+ fillMap(root,['r','u','n']);click(root,'Build the ending');assert.ok(stage().includes('Try'));
+ click(root,'Keep the base unchanged');assert.equal(c.progress.activities.at(-1).correct,false);
+ click(root,'Double the final consonant');assert.ok(root.textContent.includes('ONE consonant sound'));
+ assert.ok(root.textContent.includes('ng spells one sound'));assert.ok(root.textContent.includes('Together: running'));
+ const before=c.speech.length;click(root,'Spell with the model hidden');assert.equal(c.speech.length,before);
+ assert.ok(!root.textContent.includes('running'));assert.ok(root.all.every(e=>!Object.values(e.attrs).some(v=>v.includes('running'))));
+ submit(root,'running');assert.equal(c.progress.attempts.at(-1).modelUsed,true);
+ assert.equal(c.progress.sessions[0].results.at(-1).outcome,'supported');assert.ok(validateProgress(c.progress).ok);
+});
+
+test('full first session automatically teaches new core words, keeps transfer checks independent, then offers one sentence',()=>{
+ const c=fixture(),root=practice(c,'doubling-ing');finishWords(root,c);
+ assert.ok(c.progress.attempts.some(a=>a.lessonContext==='transfer'&&!a.modelUsed));
+ assert.ok(c.progress.attempts.filter(a=>a.lessonContext==='core'&&a.reviewKind==='first-exposure'&&a.attemptType==='first').every(a=>a.modelUsed));
+ const stage=root.querySelector('.lesson-flow').all.find(e=>e.attrs['aria-current']==='step');assert.ok(stage.textContent.includes('Use'));
+ assert.ok(!root.textContent.includes('She is running to first base.'));assert.ok(!root.textContent.includes('null'));
+ click(root,'Hear Sentence');submit(root,c.speech.at(-1));assert.equal(c.progress.activities.at(-1).kind,'sentence');
+ assert.equal(c.progress.activities.at(-1).checks[0].originLessonId,'doubling-ing');
+ click(root,'See results');assert.equal(c.navigation[0][0],'results');
+ assert.equal(c.progress.points.ledger.filter(e=>e.kind==='sentence-practice').length,1);
+ assert.equal(c.progress.points.ledger.find(e=>e.kind==='sentence-practice').points,1);
+});
+
+test('returning lesson starts with a previously attempted word, hidden and without coaching',()=>{
+ const c=fixture(),first=practice(c,'doubling-ing');build(first,c);submit(first,'running');click(first,'Finish for today');
+ c.today='2026-10-06';const root=renderPractice(c,{lessonId:'doubling-ing'});
+ assert.ok(root.querySelector('.batting'));assert.ok(!root.querySelector('.lesson-intro'));assert.ok(!root.textContent.includes('running'));
+ click(root,'Hear Word and Sentence');assert.equal(c.speech.at(-1)[0],'running');submit(root,'running');
+ const a=c.progress.attempts.at(-1);assert.equal(a.reviewKind,'later-session');assert.equal(a.modelUsed,false);
+ click(root,'Next word');assert.ok(root.querySelector('.sound-routine'),'unseen core word gets teaching');
+});
+
+test('miss automatically routes through hint and sound building to a bounded hidden retry',()=>{
+ const c=fixture(),first=practice(c,'doubling-ing');build(first,c);submit(first,'running');click(first,'Finish for today');
+ c.today='2026-10-06';const root=renderPractice(c,{lessonId:'doubling-ing'});
+ submit(root,'runing');click(root,'Try with a hint');assert.ok(root.querySelector('.phase-hint'));assert.ok(!root.textContent.includes('running'));
+ submit(root,'runing');click(root,'Build with the coach');assert.ok(root.querySelector('.sound-routine'));
+ build(root,c);assert.ok(root.querySelector('.phase-final'));assert.ok(!root.textContent.includes('running'));
+ submit(root,'runing');assert.equal(c.progress.sessions.at(-1).results.at(-1).outcome,'moved-on');
+ assert.ok(button(root,'Next word'));assert.ok(validateProgress(c.progress).ok);
+});
+
+test('coaching fallback offers specific choice feedback without replaying the model',()=>{
+ const c=fixture(),root=practice(c,'doubling-ing');click(root,'Use the coach’s example instead');
+ const builder=root.querySelector('.builder'),coach=root.querySelector('.coach');click(root,'Keep the base unchanged');
+ assert.equal(root.querySelector('.builder'),builder);assert.equal(root.querySelector('.coach'),coach);
+ assert.ok(root.textContent.includes('TRY AGAIN — PICK ONE'));assert.ok(root.textContent.includes('miss the extra n'));
+ click(root,'Double the final consonant');assert.ok(root.textContent.includes('CORRECT — TRY SPELLING'));
+ assert.equal(root.querySelector('.practice-ready').getAttribute('disabled'),null);click(root,'Try spelling');
+ assert.ok(!root.textContent.includes('running'));assert.equal(c.speech.length,0);
+});
+
+test('contrast routine teaches the keep decision',()=>{
+ const c=fixture(),root=practice(c,'doubling-contrast');build(root,c);submit(root,'helping');
+ const a=c.progress.activities.find(x=>x.kind==='sound-ending');assert.equal(a.typed,'keep');assert.equal(a.correct,true);
+ assert.equal(c.progress.attempts.at(-1).modelUsed,true);
+});
+
+test('reviewing the pattern returns to the current coach and does not restart the session',()=>{
+ const c=fixture(),root=practice(c,'doubling-ing');click(root,'Use the coach’s example instead');
+ const id=c.progress.sessions[0].id;click(root,'Review the pattern');assert.ok(root.querySelector('.lesson-intro'));intro(root);
+ assert.ok(root.querySelector('.coach'));assert.equal(c.progress.sessions.length,1);assert.equal(c.progress.sessions[0].id,id);
+ assert.equal(c.speech.length,0);
+});
+
+test('results give a plain summary and Done for today, keeping reporting in the progress view',()=>{
+ const c=fixture(),root=practice(c,'doubling-ing');finishWords(root,c);click(root,'Skip sentence check');
+ const sessionId=c.navigation[0][1].sessionId,results=renderResults(c,{sessionId});
+ assert.ok(results.textContent.includes('You’re done for today!'));assert.ok(results.textContent.includes('What happens next?'));
+ assert.ok(!results.textContent.includes('later-session review'));assert.ok(!results.textContent.includes('same-session recheck'));
+ click(results,'Done for today');assert.deepEqual(c.navigation.at(-1),['home']);
+ click(results,'View progress');assert.deepEqual(c.navigation.at(-1),['parent']);
+});
+
+test('finish remains available during teaching and does not invent completed spelling evidence',()=>{
+ const c=fixture(),root=renderPractice(c,{lessonId:'doubling-ed'});click(root,'Finish for today');
+ assert.equal(c.progress.attempts.length,0);assert.equal(c.progress.sessions[0].completedWords,0);assert.equal(c.navigation[0][0],'home');
 });
 
 
-test('new dugout warm-up is silent, records decisions separately, and keeps transfer targets hidden',()=>{
-  for (const lessonId of ['doubling-ing','doubling-ed','doubling-contrast']) {
-    const c=fixture(), root=renderPractice(c,{lessonId});
-    assert.ok(root.querySelector('.warmup')); assert.ok(!root.textContent.includes('null'));
-    click(root,'Next play'); click(root,'Next play'); click(root,'Next play');
-    const opposite='Double the final consonant';
-    click(root,opposite); assert.ok(root.textContent.includes('TRY AGAIN — PICK ONE'));
-    const first=c.progress.activities.at(-1);assert.equal(first.correct,false);assert.equal(first.modelUsed,false);
-    click(root,'Keep the base unchanged'); click(root,'Next play');
-    click(root,lessonId==='doubling-contrast'?'Keep the base unchanged':'Double the final consonant');
-    click(root,'Start batting practice');
-    assert.ok(root.querySelector('.coach')); assert.equal(c.progress.attempts.length,0);
-    assert.equal(c.speech.length,0); assert.ok(!root.textContent.includes('null'));
-    assert.equal(c.progress.points.ledger.length,0,'decision practice does not award mastery or word points');
-    const exported=validateProgress(JSON.parse(JSON.stringify(c.progress)));assert.ok(exported.ok);
-  }
+test('short returning sessions move beyond today’s correct words without replaying the introduction',()=>{
+ const c=fixture();c.settings.sessionLength=2;
+ const first=practice(c,'doubling-ing');build(first,c);submit(first,'running');click(first,'Finish for today');
+ const next=renderPractice(c,{lessonId:'doubling-ing'});assert.ok(!next.querySelector('.lesson-intro'));
+ click(next,'Hear base word');assert.equal(c.speech.at(-1),'hop');
 });
 
-test('completed warm-up stays optional in later sessions; word recall starts hidden and unsupported',()=>{
-  const c=fixture();
-  c.progress.activities.push({id:'warm',date:c.today,sessionId:'old',lessonId:'doubling-ing',kind:'build',word:'jogging',prompt:'Warm-up 2: jog + ing',typed:'double',correct:true,modelUsed:false,attemptType:'first',checks:[]});
-  const first=renderPractice(c,{lessonId:'doubling-ing'});
-  assert.ok(!first.querySelector('.warmup'));click(first,'Double the final consonant');click(first,'Ready for batting practice');submit(first,'running');
-  click(first,'Finish for today');c.today='2026-10-06';
-  const later=renderPractice(c,{lessonId:'doubling-ing'});
-  // Newly unpracticed words can precede running. Complete them until running returns.
-  let guard=0;
-  while(true) {
-    if(later.querySelector('.coach')) { click(later,'Double the final consonant');click(later,'Ready for batting practice'); }
-    click(later,'Hear Word and Sentence'); const word=c.speech.at(-1)[0];
-    assert.ok(!later.textContent.includes(word));submit(later,word);
-    if(word==='running') break;
-    click(later,'Next batter'); assert.ok(++guard<10);
-  }
-  const attempt=c.progress.attempts.at(-1);assert.equal(attempt.modelUsed,false);assert.equal(attempt.reviewKind,'later-session');
+
+test('six new words plus one sentence earn seven clear practice runs, including supported words',()=>{
+ const c=fixture(),root=practice(c,'doubling-ing');finishWords(root,c);click(root,'Hear Sentence');submit(root,c.speech.at(-1));click(root,'See results');
+ const sessionId=c.navigation[0][1].sessionId,results=renderResults(c,{sessionId});
+ assert.equal(c.progress.points.ledger.length,7);assert.ok(c.progress.points.ledger.every(e=>e.points===1));
+ assert.ok(results.textContent.includes('RUNS'));assert.ok(results.textContent.includes('1 run per completed word'));
+ assert.ok(!results.textContent.includes('POINTS'));
 });
 
-test('sentence screen omits empty sections instead of rendering null, and celebration has a clear label',()=>{
-  const c=fixture(), root=practice(c,'doubling-ing');
-  let guard=0;
-  while(!root.querySelector('.sentence-check')) {
-    if(root.querySelector('.coach')) {click(root,'Double the final consonant');click(root,'Ready for batting practice');}
-    click(root,'Hear Word and Sentence');submit(root,c.speech.at(-1)[0]);
-    assert.ok(root.textContent.includes('Practice play complete'));assert.ok(!root.querySelector('.star'));
-    const next=root.all.find(e=>e.tagName==='button'&&['Next batter','Try a game situation'].includes(e.textContent));next.events.click();assert.ok(++guard<20);
-  }
-  assert.ok(!root.textContent.includes('null'));click(root,'Show sentence (uses support)');assert.ok(!root.textContent.includes('null'));
+test('Extra practice opens a separate silent session with new applications and familiar words, then a related sentence',()=>{
+ const c=fixture(),regular=practice(c,'doubling-ing');finishWords(regular,c);click(regular,'Skip sentence check');
+ const results=renderResults(c,{sessionId:c.navigation.at(-1)[1].sessionId});click(results,'Extra practice (optional)');
+ assert.deepEqual(c.navigation.at(-1),['practice',{lessonId:'doubling-ing',mode:'extra'}]);
+ const spoken=c.speech.length,extra=renderPractice(c,c.navigation.at(-1)[1]);
+ assert.equal(c.speech.length,spoken);assert.ok(!extra.querySelector('.lesson-intro'));assert.ok(!extra.querySelector('.coach'));
+ assert.ok(extra.textContent.includes('New word challenge'));assert.ok(extra.textContent.includes('Extra practice'));
+ assert.ok(!extra.textContent.includes('padding'));finishWords(extra,c);
+ const session=c.progress.sessions.at(-1);assert.equal(session.practiceMode,'extra');
+ assert.equal(session.results.filter(r=>r.lessonContext==='extra-new').length,4);
+ assert.equal(session.results.filter(r=>r.lessonContext==='extra-review').length,2);
+ assert.ok(c.progress.attempts.filter(a=>a.sessionId===session.id).every(a=>!a.modelUsed));
+ click(extra,'Hear Sentence');assert.ok(c.speech.at(-1).includes('padding'));assert.ok(c.speech.at(-1).includes('running'));
+ submit(extra,c.speech.at(-1));click(extra,'See results');
+ assert.ok(validateProgress(c.progress).ok);
+ const more=renderPractice(c,{lessonId:'doubling-ing',mode:'extra'});click(more,'Hear Word and Sentence');
+ assert.equal(c.speech.at(-1)[0],'shopping');
 });
 
-test('a viewed comparison marks its target supported, while unrelated later recall stays independent',()=>{
-  const c=fixture(), initial=practice(c,'doubling-ing');
-  for(const word of ['running','hopping']) {
-    click(initial,'Double the final consonant');click(initial,'Ready for batting practice');submit(initial,word);click(initial,'Next batter');
-  }
-  click(initial,'Finish for today');c.today='2026-10-06';
-  const root=renderPractice(c,{lessonId:'doubling-ing'});
-  click(root,'Next play');click(root,'Next play');click(root,'Skip warm-up');
-  let guard=0, checkedRun=false, checkedHop=false;
-  while(!checkedRun || !checkedHop) {
-    if(root.querySelector('.coach')) {click(root,'Double the final consonant');click(root,'Ready for batting practice');}
-    click(root,'Hear Word and Sentence');const word=c.speech.at(-1)[0];submit(root,word);
-    if(word==='running') {assert.equal(c.progress.attempts.at(-1).modelUsed,false);checkedRun=true;}
-    if(word==='hopping') {assert.equal(c.progress.attempts.at(-1).modelUsed,true);checkedHop=true;}
-    if(!checkedRun || !checkedHop) click(root,'Next batter');
-    assert.ok(++guard<12);
-  }
+test('a new application can request authored coaching; shown models mark it supported and do not auto-narrate',()=>{
+ const c=fixture(),extra=renderPractice(c,{lessonId:'doubling-ing',mode:'extra'});
+ assert.equal(c.speech.length,0);click(extra,'Help me build this word');
+ assert.ok(extra.querySelector('.coach'));assert.ok(extra.textContent.includes('pad + ing = padding'));assert.equal(c.speech.length,0);
+ click(extra,'Double the final consonant');click(extra,'Try spelling');assert.ok(!extra.textContent.includes('padding'));
+ submit(extra,'padding');const attempt=c.progress.attempts.at(-1),result=c.progress.sessions[0].results.at(-1);
+ assert.equal(attempt.lessonContext,'extra-new');assert.equal(attempt.modelUsed,true);assert.equal(result.outcome,'supported');
+ assert.equal(c.speech.length,0);assert.ok(validateProgress(c.progress).ok);
+});
+
+test('consonant-y extra practice has new words and a sentence stage even though its original lesson has no sentence',()=>{
+ const c=fixture();c.settings.sessionLength=1;
+ const extra=renderPractice(c,{lessonId:'consonant-y',mode:'extra'});
+ click(extra,'Hear Word and Sentence');assert.equal(c.speech.at(-1)[0],'tries');submit(extra,'tries');
+ // A single-word sentence is used until the older mixed target has been introduced.
+ click(extra,'Use it in a sentence');click(extra,'Hear Sentence');assert.equal(c.speech.at(-1),'She tries to catch the ball.');
+ click(extra,'Skip sentence check');assert.equal(c.navigation.at(-1)[0],'results');
+ const next=renderPractice(c,{lessonId:'consonant-y',mode:'extra'});
+ click(next,'Hear Word and Sentence');assert.equal(c.speech.at(-1)[0],'cries');submit(next,'cries');
+ click(next,'Use it in a sentence');assert.ok(next.querySelector('.sentence-check'));
+ click(next,'Hear Sentence');assert.equal(c.speech.at(-1),'The baby cries when the game ends.');
+});
+
+test('a missed extra word receives its own hint and building example, with a bounded supported hidden retry',()=>{
+ const c=fixture(),extra=renderPractice(c,{lessonId:'doubling-ed',mode:'extra'});
+ submit(extra,'bated');click(extra,'Try with a hint');assert.ok(extra.textContent.toLowerCase().includes('bat'));assert.ok(extra.textContent.includes('/id/'));
+ submit(extra,'bated');click(extra,'Build with the coach');assert.ok(extra.querySelector('.coach'));
+ click(extra,'Double the final consonant');click(extra,'Try spelling');assert.ok(!extra.textContent.includes('batted'));
+ submit(extra,'batted');assert.equal(c.progress.sessions[0].results[0].outcome,'supported');
+ assert.equal(c.progress.attempts.at(-1).originLessonId,'doubling-ed');assert.equal(c.progress.attempts.at(-1).stage,'final-try');
+ assert.equal(c.speech.length,0);assert.ok(validateProgress(c.progress).ok);
+});
+
+test('all four lessons finish with a prominent scoped rule, before scores and optional details',()=>{
+ for(const course of CATALOG.filter(l=>l.available)) {
+  const c=fixture();c.progress.sessions.push({id:'end',date:c.today,lessonId:course.id,practiceMode:'lesson',results:[],plannedWords:1,completedWords:0});
+  const root=renderResults(c,{sessionId:'end'}),recap=root.querySelector('.rule-recap');
+  assert.ok(recap,course.id);assert.ok(recap.textContent.includes('TAKE THIS RULE WITH YOU'));assert.ok(recap.querySelector('h2'));
+  assert.ok(recap.querySelector('.rule-example'));assert.ok(recap.querySelector('details'));
+  assert.ok(root.children.indexOf(recap)<root.children.indexOf(root.querySelector('.scoreboard')));
+  assert.ok(root.textContent.includes('Finished! Press Done for today.'));assert.equal(c.speech.length,0);
+ }
+});
+
+test('spelling actions highlight optional hearing, then typing, then checking, without revealing an answer',()=>{
+ const c=fixture(),root=renderPractice(c,{lessonId:'doubling-ing',mode:'extra'});
+ const hear=button(root,'Hear Word and Sentence'),check=button(root,'Check my spelling'),input=root.querySelector('input');
+ assert.ok(hear.className.includes('primary'));assert.equal(check.getAttribute('disabled'),'');
+ assert.ok(root.querySelector('.action-cue').textContent.includes('First:'));
+ click(root,'Hear Word and Sentence');assert.equal(c.speech.length,1);assert.ok(root.querySelector('.action-cue').textContent.includes('type the word'));
+ assert.ok(!root.textContent.includes('padding'));input.value='padding';input.events.input({target:input});
+ assert.equal(check.getAttribute('disabled'),null);assert.ok(!hear.className.includes('primary'));
+ assert.ok(root.querySelector('.action-cue').textContent.includes('Check my spelling'));
+ submit(root,'padding');assert.ok(root.querySelector('.action-cue').textContent.includes('Next word'));assert.equal(c.speech.length,1);
+});
+
+test('sentence actions advance from optional hearing to typing and checking',()=>{
+ const c=fixture();c.settings.sessionLength=1;const root=renderPractice(c,{lessonId:'doubling-ed',mode:'extra'});
+ submit(root,'batted');click(root,'Use it in a sentence');const check=button(root,'Check Sentence');
+ assert.equal(check.getAttribute('disabled'),'');assert.ok(button(root,'Hear Sentence').className.includes('primary'));
+ click(root,'Hear Sentence');assert.ok(root.querySelector('.action-cue').textContent.includes('type the sentence'));
+ const input=root.querySelector('input');input.value=c.speech.at(-1);input.events.input({target:input});
+ assert.equal(check.getAttribute('disabled'),null);assert.ok(root.querySelector('.action-cue').textContent.includes('Check Sentence'));
+ submit(root,input.value);assert.ok(root.querySelector('.action-cue').textContent.includes('See results'));
+});
+
+test('consonant-y introduces its rule using examples that do not reveal the transfer target',()=>{
+ const c=fixture(),root=renderPractice(c,{lessonId:'consonant-y'});assert.ok(root.querySelector('.rule-spotlight'));
+ click(root,'See examples');assert.ok(root.textContent.includes('copy − y + i + es = copies'));
+ click(root,'Next example');assert.ok(root.textContent.includes('hurry − y + i + es = hurries'));
+ assert.ok(!root.textContent.includes('carries'));click(root,'Build with the coach');assert.ok(root.querySelector('.coach'));
+ assert.equal(c.speech.length,0);assert.equal(c.progress.attempts.length,0);
+});
+
+test('the final rule can be read on request and never narrates automatically',()=>{
+ const c=fixture();c.progress.sessions.push({id:'end',lessonId:'doubling-ed',results:[]});
+ const root=renderResults(c,{sessionId:'end'});assert.equal(c.speech.length,0);
+ click(root,'Read rule');assert.equal(c.speech.length,1);assert.ok(c.speech[0].includes('Double before -ed'));assert.ok(c.speech[0].includes('w, x, y'));
 });
